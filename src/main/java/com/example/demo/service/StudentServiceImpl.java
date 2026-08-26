@@ -1,8 +1,7 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.StudentCreateDto;
-import com.example.demo.dto.StudentResponseDto;
-import com.example.demo.dto.StudentUpdateDto;
+import com.example.demo.dto.StudentRequest;
+import com.example.demo.dto.StudentResponse;
 import com.example.demo.entity.Student;
 import com.example.demo.exception.StudentNotFoundException;
 import com.example.demo.mapper.StudentMapper;
@@ -14,58 +13,59 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class StudentServiceImpl implements StudentService {
 
     private final StudentRepository studentRepository;
+    private final StudentMapper studentMapper;
     private final StudentValidator studentValidator;
 
     @Override
-    public StudentResponseDto create(StudentCreateDto createDto) {
-        studentValidator.validateEmailAvailableForCreate(createDto.getEmail());
-        Student student = StudentMapper.toEntity(createDto);
+    @Transactional
+    public StudentResponse create(StudentRequest request) {
+        studentValidator.validateForCreate(request);
+        Student student = studentMapper.toEntity(request);
         Student saved = studentRepository.save(student);
-        return StudentMapper.toResponseDto(saved);
+        return studentMapper.toResponse(saved);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public StudentResponseDto findById(Long id) {
-        Student student = getStudentOrThrow(id);
-        return StudentMapper.toResponseDto(student);
-    }
-
-    @Override
-    public StudentResponseDto update(Long id, StudentUpdateDto updateDto) {
-        Student student = getStudentOrThrow(id);
-        studentValidator.validateEmailAvailableForUpdate(id, updateDto.getEmail());
-        StudentMapper.applyUpdate(student, updateDto);
+    @Transactional
+    public StudentResponse update(Long id, StudentRequest request) {
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new StudentNotFoundException(id));
+        studentValidator.validateForUpdate(id, request);
+        studentMapper.updateEntity(student, request);
         Student saved = studentRepository.save(student);
-        return StudentMapper.toResponseDto(saved);
+        return studentMapper.toResponse(saved);
     }
 
     @Override
+    @Transactional
     public void delete(Long id) {
-        Student student = getStudentOrThrow(id);
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new StudentNotFoundException(id));
         studentRepository.delete(student);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Page<StudentResponseDto> search(String term, Pageable pageable) {
-        Page<Student> page;
-        if (term == null || term.isBlank()) {
-            page = studentRepository.findAll(pageable);
-        } else {
-            page = studentRepository.search(term, pageable);
-        }
-        return page.map(StudentMapper::toResponseDto);
+    public StudentResponse findById(Long id) {
+        Student student = studentRepository.findById(id)
+                .orElseThrow(() -> new StudentNotFoundException(id));
+        return studentMapper.toResponse(student);
     }
 
-    private Student getStudentOrThrow(Long id) {
-        return studentRepository.findById(id)
-                .orElseThrow(() -> new StudentNotFoundException(id));
+    @Override
+    public Page<Student> findAll(Pageable pageable, Optional<String> q) {
+        if (q.isPresent() && !q.get().isBlank()) {
+            String term = q.get();
+            return studentRepository
+                    .findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                            term, term, term, pageable);
+        }
+        return studentRepository.findAll(pageable);
     }
 }

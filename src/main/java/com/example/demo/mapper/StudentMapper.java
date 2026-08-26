@@ -1,33 +1,37 @@
 package com.example.demo.mapper;
 
-import com.example.demo.dto.StudentCreateDto;
-import com.example.demo.dto.StudentResponseDto;
-import com.example.demo.dto.StudentUpdateDto;
+import com.example.demo.dto.StudentRequest;
+import com.example.demo.dto.StudentResponse;
 import com.example.demo.entity.Student;
+import org.springframework.stereotype.Component;
 
-public final class StudentMapper {
+@Component
+public class StudentMapper {
 
-    private StudentMapper() {
+    public Student toEntity(StudentRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return Student.builder()
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .email(request.getEmail())
+                .age(request.getAge())
+                .build();
     }
 
-    public static Student toEntity(StudentCreateDto dto) {
-        Student student = new Student();
-        student.setFirstName(dto.getFirstName());
-        student.setLastName(dto.getLastName());
-        student.setEmail(dto.getEmail());
-        student.setAge(dto.getAge());
-        return student;
+    public void updateEntity(Student student, StudentRequest request) {
+        student.setFirstName(request.getFirstName());
+        student.setLastName(request.getLastName());
+        student.setEmail(request.getEmail());
+        student.setAge(request.getAge());
     }
 
-    public static void applyUpdate(Student student, StudentUpdateDto dto) {
-        student.setFirstName(dto.getFirstName());
-        student.setLastName(dto.getLastName());
-        student.setEmail(dto.getEmail());
-        student.setAge(dto.getAge());
-    }
-
-    public static StudentResponseDto toResponseDto(Student student) {
-        return StudentResponseDto.builder()
+    public StudentResponse toResponse(Student student) {
+        if (student == null) {
+            return null;
+        }
+        return StudentResponse.builder()
                 .id(student.getId())
                 .firstName(student.getFirstName())
                 .lastName(student.getLastName())

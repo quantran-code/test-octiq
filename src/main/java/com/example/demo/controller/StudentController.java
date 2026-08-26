@@ -1,8 +1,11 @@
 package com.example.demo.controller;
 
-import com.example.demo.dto.StudentCreateDto;
-import com.example.demo.dto.StudentResponseDto;
-import com.example.demo.dto.StudentUpdateDto;
+import com.example.demo.dto.PagedResponse;
+import com.example.demo.dto.StudentRequest;
+import com.example.demo.dto.StudentResponse;
+import com.example.demo.entity.Student;
+import com.example.demo.mapper.StudentMapper;
+import com.example.demo.paginator.Paginator;
 import com.example.demo.service.StudentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,39 +23,47 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/students")
 @RequiredArgsConstructor
 public class StudentController {
 
     private final StudentService studentService;
+    private final StudentMapper studentMapper;
+    private final Paginator paginator;
 
-    @PostMapping
-    public ResponseEntity<StudentResponseDto> create(@Valid @RequestBody StudentCreateDto createDto) {
-        StudentResponseDto response = studentService.create(createDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    @GetMapping
+    public ResponseEntity<PagedResponse<StudentResponse>> findAll(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String q) {
+        Pageable pageable = paginator.buildPageable(page, size, sort);
+        Page<Student> result = studentService.findAll(pageable, Optional.ofNullable(q));
+        return ResponseEntity.ok(paginator.toPagedResponse(result, studentMapper));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<StudentResponseDto> findById(@PathVariable Long id) {
+    public ResponseEntity<StudentResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(studentService.findById(id));
     }
 
+    @PostMapping
+    public ResponseEntity<StudentResponse> create(@Valid @RequestBody StudentRequest request) {
+        StudentResponse response = studentService.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @PutMapping("/{id}")
-    public ResponseEntity<StudentResponseDto> update(@PathVariable Long id, @Valid @RequestBody StudentUpdateDto updateDto) {
-        return ResponseEntity.ok(studentService.update(id, updateDto));
+    public ResponseEntity<StudentResponse> update(@PathVariable Long id, @Valid @RequestBody StudentRequest request) {
+        return ResponseEntity.ok(studentService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         studentService.delete(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping
-    public ResponseEntity<Page<StudentResponseDto>> list(
-            @RequestParam(required = false) String search,
-            Pageable pageable) {
-        return ResponseEntity.ok(studentService.search(search, pageable));
     }
 }
